@@ -5,20 +5,15 @@ import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.integration.channel.DirectChannel;
 import org.springframework.integration.dsl.IntegrationFlow;
 import org.springframework.integration.dsl.IntegrationFlows;
 import org.springframework.integration.dsl.Pollers;
 import org.springframework.integration.websocket.ServerWebSocketContainer;
 import org.springframework.integration.websocket.outbound.WebSocketOutboundMessageHandler;
 import org.springframework.messaging.Message;
-import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.MessageHandler;
-import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.messaging.support.GenericMessage;
 import org.springframework.messaging.support.MessageBuilder;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.concurrent.Executors;
@@ -26,6 +21,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
+import static org.springframework.messaging.simp.SimpMessageHeaderAccessor.SESSION_ID_HEADER;
 
 /**
  * @author Artem Bilan
@@ -53,11 +49,6 @@ public class Application {
         return new WebSocketOutboundMessageHandler(serverWebSocketContainer());
     }
 
-    @Bean(name = "webSocketFlow.input")
-    MessageChannel requestChannel() {
-        return new DirectChannel();
-    }
-
     @Bean
     IntegrationFlow webSocketFlow() {
         return flow -> flow
@@ -67,16 +58,11 @@ public class Application {
                         .keySet()
                         .stream()
                         .map(s -> MessageBuilder.fromMessage(m)
-                                .setHeader(SimpMessageHeaderAccessor.SESSION_ID_HEADER, s)
+                                .setHeader(SESSION_ID_HEADER, s)
                                 .build())
                         .collect(Collectors.toList()))
                 .channel(c -> c.executor(Executors.newCachedThreadPool()))
                 .handle(webSocketOutboundAdapter());
-    }
-
-    @RequestMapping("/hi/{name}")
-    public void send(@PathVariable String name) {
-        requestChannel().send(MessageBuilder.withPayload(name).build());
     }
 
     @Bean
