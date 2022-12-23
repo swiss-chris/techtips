@@ -18,7 +18,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.Collectors;
 
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static org.springframework.messaging.simp.SimpMessageHeaderAccessor.SESSION_ID_HEADER;
@@ -52,15 +51,15 @@ public class Application {
     @Bean
     IntegrationFlow webSocketFlow() {
         return flow -> flow
-                .log(Message::getPayload)
+                .log(m -> "Received: " + m.getPayload())
                 .split(Message.class, m -> serverWebSocketContainer()
                         .getSessions()
                         .keySet()
                         .stream()
                         .map(s -> MessageBuilder.fromMessage(m)
                                 .setHeader(SESSION_ID_HEADER, s)
-                                .build())
-                        .collect(Collectors.toList()))
+                                .build()))
+                .log(m -> "Sent (sessID " + m.getHeaders().get(SESSION_ID_HEADER) + "): " + m.getPayload())
                 .channel(c -> c.executor(Executors.newCachedThreadPool()))
                 .handle(webSocketOutboundAdapter());
     }
